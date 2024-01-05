@@ -122,3 +122,19 @@ class User:
             logging.error(e)
             return
 
+    def get_course(self) -> list[Course]:
+        course = http.get('https://mooc2-ans.chaoxing.com/mooc2-ans/visit/courses/list', cookies=self.cookies)
+        soup = get_soup(course.text)
+        course_list = []
+        for c in soup.find_all('li', {'class': 'course'}):
+            name = c.find('h3').getText()
+            url = c.find('h3').find('a').get('href')
+            info = [i.get_text().strip() for i in c.find_all('p')]
+            if len(info) == 3:
+                desc, teacher, classes = info
+            else:
+                desc, teacher, _, classes = info
+            classes = classes.split('班级：')[-1]
+            course_list.append(Course(name, url, desc, teacher, classes))
+
+        return course_list
