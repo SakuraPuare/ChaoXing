@@ -1,4 +1,4 @@
-# ChaoXing 超星学习通 
+# ChaoXing 超星学习通
 
 灵感来自 [chaoxing_tool](https://github.com/liuyunfz/chaoxing_tool)
 

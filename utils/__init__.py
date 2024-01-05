@@ -4,6 +4,11 @@ from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 from bs4 import BeautifulSoup
 
+from utils.http import Http
+from utils.log import logger
+
+httpx = Http()
+
 
 def aes_encryption(message: str, key: str) -> str:
     cipher = AES.new(key.encode('utf-8'), AES.MODE_CBC, iv=key.encode('utf-8'))
