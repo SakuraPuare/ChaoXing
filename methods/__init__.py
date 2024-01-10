@@ -2,7 +2,7 @@ import json
 import re
 
 from models.Course import Course, Unit, Chapter, Catalog
-from models.Task import TaskFactory
+from models.Task import TaskFactory, BaseTask, VideoTask, DocumentTask
 from utils import get_soup
 from utils import httpx, logger
 
@@ -48,6 +48,32 @@ def get_course_catalog(course: Course) -> Catalog:
     return catalog
 
 
+def get_chapter_tasks(course: Course, chapter: Chapter) -> list[BaseTask]:
+    count = get_chapter_task_page_count(course, chapter)
+    task_list = []
+    for page in range(count):
+        url = f'https://mooc1.chaoxing.com/knowledge/cards?clazzid={course.class_ids}&courseid={course.ids}&knowledgeid={chapter.ids}&num={page}'
+        rsp = httpx.get(url)
+        try:
+            data = re.findall(r'mArg = ({[\s\S]*);\n}catch', rsp.text)
+            if not data:
+                continue
+            else:
+                data = data[-1]
+
+            json_data = json.loads(data)
+            print(json_data.get('defaults').get('reportUrl'))
+            for task in json_data.get('attachments', []):
+                t = TaskFactory.create(task)
+                if t:
+                    task_list.append(t)
+
+        except Exception as e:
+            logger.error(e)
+            continue
+    return task_list
+
+
 def get_chapter_task_page_count(course: Course, chapter: Chapter) -> int:
     url = f'https://mooc1.chaoxing.com/mycourse/studentstudyAjax?courseId={course.ids}&clazzid={course.class_ids}&chapterId={chapter.ids}'
     rsp = httpx.get(url)
@@ -66,3 +92,20 @@ def get_uncompleted_chapters(catalog: Catalog) -> list[Chapter]:
         for c in u:
             if c.tasks > 0:
                 yield c
+
+
+def solve_video_task(task: VideoTask) -> None:
+    pass
+
+
+def solve_document_task(task: DocumentTask) -> None:
+    pass
+
+
+def solve_task(task: BaseTask) -> None:
+    if isinstance(task, VideoTask):
+        solve_video_task(task)
+    elif isinstance(task, DocumentTask):
+        solve_document_task(task)
+    else:
+        return

@@ -58,6 +58,9 @@ class Catalog:
     def __iter__(self):
         return iter(self.units)
 
+    def __len__(self):
+        return len(self.units)
+
     def add_unit(self, unit: Unit) -> None:
         unit.seq = len(self.units) + 1
         self.units.append(unit)

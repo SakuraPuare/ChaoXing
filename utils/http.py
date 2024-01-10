@@ -1,10 +1,17 @@
-import math
 import random
 
 import httpx
-from httpx import Response, request
+from httpx import Response, request, ConnectTimeout, ConnectError
 
-from utils.log import logger
+from utils.logger import logger
+
+TIMEOUT = 10
+
+
+def anti_spider():
+    http = Http()
+    rq = http.get(f'https://mooc1.chaoxing.com/processVerifyPng.ac?t={random.randint(0, 2147483646)}')
+    pass
 
 
 class Http:
@@ -41,14 +48,20 @@ class Http:
         if not cookies:
             cookies = self.cookies
 
-        rq = request("GET", url, params=params, headers=h, cookies=cookies, follow_redirects=follow_redirects
-                     , timeout=30)
+        try:
+            rq = request("GET", url, params=params, headers=h, cookies=cookies, follow_redirects=follow_redirects
+                         , timeout=TIMEOUT)
 
-        if 'antispider' in str(rq.url):
-            logger.error('触发反爬虫')
-            return Response(403)
+            if 'antispider' in str(rq.url):
+                logger.warning('Anti-Spider')
+                anti_spider()
+                return Response(403)
 
-        return rq
+            return rq
+        except (ConnectTimeout, ConnectError) as e:
+            logger.error(f'Connect Error, Retry..., {e}')
+            # retry
+            return self.get(url, params=params, headers=headers, cookies=cookies, follow_redirects=follow_redirects)
 
     def post(self, url: str, *, data: dict = None, json: dict = None, params: dict = None, headers: dict = None,
              cookies: dict = None, follow_redirects: bool = True) -> Response:
@@ -59,7 +72,13 @@ class Http:
         if not cookies:
             cookies = self.cookies
 
-        rq = request("POST", url, data=data, json=json, params=params, headers=headers, cookies=cookies,
-                     follow_redirects=follow_redirects, timeout=30)
+        try:
+            rq = request("POST", url, data=data, json=json, params=params, headers=headers, cookies=cookies,
+                         follow_redirects=follow_redirects, timeout=TIMEOUT)
 
-        return rq
+            return rq
+        except ConnectTimeout | ConnectError as e:
+            logger.error(f'Connect Error, Retry..., {e}')
+            # retry
+            return self.post(url, data=data, json=json, params=params, headers=headers, cookies=cookies,
+                             follow_redirects=follow_redirects)

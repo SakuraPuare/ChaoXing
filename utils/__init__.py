@@ -5,7 +5,7 @@ from Crypto.Util.Padding import pad, unpad
 from bs4 import BeautifulSoup
 
 from utils.http import Http
-from utils.log import logger
+from utils.logger import logger
 
 httpx = Http()
 
