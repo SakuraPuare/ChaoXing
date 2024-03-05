@@ -109,8 +109,9 @@ class User:
         if not (cookies_path / f'{self.username}.cookies').exists():
             return
 
-        if cookies_path.exists() and datetime.datetime.now() - datetime.datetime.fromtimestamp(cookies_path.stat().st_mtime) > datetime.timedelta(days=7):
-             return
+        if cookies_path.exists() and datetime.datetime.now() - datetime.datetime.fromtimestamp(
+                cookies_path.stat().st_mtime) > datetime.timedelta(days=7):
+            return
 
         try:
             with open(cookies_path / f'{self.username}.cookies', 'rb') as f:
