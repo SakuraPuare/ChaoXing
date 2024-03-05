@@ -1,3 +1,4 @@
+import datetime
 import pathlib
 import pickle
 
@@ -71,7 +72,7 @@ class User:
     @property
     def _is_login(self) -> bool:
         try:
-            get = httpx.get('https://i.chaoxing.com/base/settings')
+            get = httpx.get('https://i.chaoxing.com/base/settings', cookies=self.cookies)
             if 'login' in str(get.url):
                 return False
 
@@ -107,6 +108,9 @@ class User:
 
         if not (cookies_path / f'{self.username}.cookies').exists():
             return
+
+        if cookies_path.exists() and datetime.datetime.now() - datetime.datetime.fromtimestamp(cookies_path.stat().st_mtime) > datetime.timedelta(days=7):
+             return
 
         try:
             with open(cookies_path / f'{self.username}.cookies', 'rb') as f:
