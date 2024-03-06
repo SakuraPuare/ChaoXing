@@ -7,6 +7,12 @@ class BaseTask:
         self.begins: int = 0
         self.ends: int = 0
 
+        self.knowledgeid: str = ""
+        self.courseid: str = ""
+        self.clazzId: str = ""
+        self.userid: str = ""
+        self.reportUrl: str = ""
+
         self.otherInfo: str = ""
         self.property: dict = {}
 
@@ -44,6 +50,7 @@ class DocumentTask(BaseTask):
         super().__init__()
         self.enc: str = ""
         self.jtoken: str = ""
+        self.jobid: str = ""
         self.mid: str = ""
         self.type: str = ""
 

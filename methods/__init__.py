@@ -1,5 +1,9 @@
+import hashlib
 import json
 import re
+from datetime import datetime
+
+from httpx import Response
 
 from models.Course import Course, Unit, Chapter, Catalog
 from models.Task import TaskFactory, BaseTask, VideoTask, DocumentTask
@@ -28,7 +32,8 @@ def get_user_course() -> list[Course]:
 
 
 def get_course_catalog(course: Course) -> Catalog:
-    url = f'https://mooc2-ans.chaoxing.com/mooc2-ans/mycourse/studentcourse?courseid={course.ids}&clazzid={course.class_ids}'
+    url = (f'https://mooc2-ans.chaoxing.com/mooc2-ans/mycourse/studentcourse?'
+           f'courseid={course.ids}&clazzid={course.class_ids}')
     course_info = httpx.get(url)
     soup = get_soup(course_info.text)
     catalog = Catalog()
@@ -52,7 +57,8 @@ def get_chapter_tasks(course: Course, chapter: Chapter) -> list[BaseTask]:
     count = get_chapter_task_page_count(course, chapter)
     task_list = []
     for page in range(count):
-        url = f'https://mooc1.chaoxing.com/knowledge/cards?clazzid={course.class_ids}&courseid={course.ids}&knowledgeid={chapter.ids}&num={page}'
+        url = (f'https://mooc1.chaoxing.com/knowledge/cards?'
+               f'clazzid={course.class_ids}&courseid={course.ids}&knowledgeid={chapter.ids}&num={page}')
         rsp = httpx.get(url)
         try:
             data = re.findall(r'mArg = ({[\s\S]*);\n}catch', rsp.text)
@@ -63,7 +69,15 @@ def get_chapter_tasks(course: Course, chapter: Chapter) -> list[BaseTask]:
 
             json_data = json.loads(data)
             print(json_data.get('defaults').get('reportUrl'))
+            root_data = {}
+            for k, v in json_data.items():
+                if k == 'attachments':
+                    continue
+                if isinstance(v, dict):
+                    root_data.update(v)
+
             for task in json_data.get('attachments', []):
+                task.update(root_data)
                 t = TaskFactory.create(task)
                 if t:
                     task_list.append(t)
@@ -75,7 +89,8 @@ def get_chapter_tasks(course: Course, chapter: Chapter) -> list[BaseTask]:
 
 
 def get_chapter_task_page_count(course: Course, chapter: Chapter) -> int:
-    url = f'https://mooc1.chaoxing.com/mycourse/studentstudyAjax?courseId={course.ids}&clazzid={course.class_ids}&chapterId={chapter.ids}'
+    url = (f'https://mooc1.chaoxing.com/mycourse/studentstudyAjax?'
+           f'courseId={course.ids}&clazzid={course.class_ids}&chapterId={chapter.ids}')
     rsp = httpx.get(url)
     soup = get_soup(rsp.text)
     return int(soup.find('input', {'id': 'cardcount'}).get('value'))
@@ -95,17 +110,32 @@ def get_uncompleted_chapters(catalog: Catalog) -> list[Chapter]:
 
 
 def solve_video_task(task: VideoTask) -> None:
+def get_video_status(object_id: str) -> Response:
+    url = (f'https://mooc1-1.chaoxing.com/ananas/status/{object_id}'
+           f'?k=&flag=normal&_dc={int(datetime.now().timestamp() * 1000)}')
+    headers = {'Referer': 'https://mooc1.chaoxing.com/ananas/modules/video/index.html'}
+    resp = httpx.get(url, headers=headers)
+    return resp
     pass
 
 
-def solve_document_task(task: DocumentTask) -> None:
-    pass
-
-
-def solve_task(task: BaseTask) -> None:
-    if isinstance(task, VideoTask):
-        solve_video_task(task)
-    elif isinstance(task, DocumentTask):
-        solve_document_task(task)
+def solve_document_task(task: DocumentTask) -> bool:
+    url = (f'https://mooc1-2.chaoxing.com/ananas/job/document?'
+           f'jobid={task.jobid}&knowledgeid={task.knowledgeid}&courseid={task.courseid}&clazzid={task.clazzId}'
+           f'&jtoken={task.jtoken}&_dc={int(datetime.now().timestamp() * 1000)}')
+    resp = httpx.get(url)
+    status = resp.json().get('status')
+    if status:
+        logger.info(f'任务点"{task.property.get("name")}"完成成功')
     else:
-        return
+        logger.error(f'任务点"{task.property.get("name")}"完成失败')
+    return status
+
+
+def solve_task(task: BaseTask) -> bool:
+    if isinstance(task, VideoTask):
+        return solve_video_task(task)
+    elif isinstance(task, DocumentTask):
+        return solve_document_task(task)
+    else:
+        return False
